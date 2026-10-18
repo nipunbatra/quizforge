@@ -93,6 +93,28 @@ question — everything needed to grade or to drive external tooling. The
 `build.py` that compiles all sets in parallel, re-verifies the fairness
 invariants, and writes a combined `answer_key.csv` + SHA-256 manifest.
 
+`grade-table:` adds a grader's score table (Marks / Score rows) to the cover
+of student papers. It is built after shuffling, so numbers and marks match
+each set:
+
+- `"parts"`: one column per part
+- `"questions"`: one column per question
+- `"mixed"`: a shuffled part gets one column; a part marked
+  `#section(shuffle: false)` gets one column per question, e.g. MCQs scored as
+  a block, long questions scored individually
+
+```typst
+#show: quiz.with(id: "midterm", sets: ("A", "B"), grade-table: "mixed")
+```
+
+## Cover and display options
+
+- `answers: false`: compile the student paper without command-line flags (like commenting out `\printanswers`); `--input mode=...` still overrides it
+- `show-marks: false`: hide marks next to questions, part titles and on the cover
+- `instructions: none`: no Instructions box
+- `name-line: false`: no Name / Roll No. lines
+- `show-set`: `auto` (default) shows "SET X" only when `sets:` is given; `true`/`false` to force
+
 ## Markers reference
 
 | Marker | Meaning |

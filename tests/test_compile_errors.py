@@ -21,6 +21,7 @@ CASES = [
     ("pick-range.typ", "pick 5 out of range", []),
     ("empty-section.typ", "section selects no questions", []),
     ("bad-filter-key.typ", "unknown filter key: tag", []),
+    ("bad-grade-table.typ", "grade-table must be none", []),
     ("blank-mismatch.typ", "body has 1 blank marker(s) but 2 answer(s)", []),
     ("stray-blank.typ", "only valid inside a fib() question body", []),
     ("unknown-set.typ", "unknown set 'Z'", ["--input", "set=Z"]),

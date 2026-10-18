@@ -58,7 +58,7 @@
   )
 }
 
-#let _render-question(entry, key) = {
+#let _render-question(entry, key, show-marks: true) = {
   let q = entry.q
   let inner = {
     // Arm the bank-style blank() machinery for this question (and disarm it
@@ -81,7 +81,7 @@
           text(size: 10pt, emph[(Select all that apply.)])
         }
       },
-      marks-tag(q.marks),
+      if show-marks { marks-tag(q.marks) },
     )
     if q.type == "fill_blank" {
       context {
@@ -152,6 +152,29 @@
   }
 }
 
+// Grader's score table on the cover, built after shuffling so it matches this set.
+//   "parts":     one column per part
+//   "questions": one column per question
+//   "mixed":     shuffled parts get one column; unshuffled parts one column per question
+#let _grade-table(R, by) = {
+  let cols = ()
+  for (i, s) in R.sections.enumerate() {
+    if by == "questions" or (by == "mixed" and not s.shuffle) {
+      for e in s.questions { cols.push(([Q#e.qno], e.marks)) }
+    } else {
+      cols.push(([Part #numbering("A", i + 1)], s.marks))
+    }
+  }
+  block(width: 100%, above: 1em, align(center, table(
+    columns: cols.len() + 2,
+    inset: (x: 8pt, y: 5pt),
+    align: center + horizon,
+    [], ..cols.map(c => strong(c.at(0))), [*Total*],
+    [*Marks*], ..cols.map(c => [#c.at(1)]), [#R.total],
+    [*Score*], ..cols.map(_ => v(1.4em)), [],
+  )))
+}
+
 #let exam-doc(config, set-id, mode) = {
   assert(mode == "exam" or mode == "key", message: "mode must be 'exam' or 'key', got: " + mode)
   let key = mode == "key"
@@ -160,20 +183,24 @@
   let all-qs = R.sections.map(s => s.questions).flatten()
   let mcqs = all-qs.filter(e => e.type == "mcq")
   let show-grid = exam.at("answer-grid", default: false) and mcqs.len() > 0
+  let show-marks = exam.at("show-marks", default: true)
+  let show-set = exam.at("show-set", default: true)
 
   let instr = (
     [Write your name and roll number before starting.],
-    [This paper has #all-qs.len() questions#if R.sections.len() > 1 [ in #R.sections.len() parts], for a total of #R.total marks.],
+    [This paper has #all-qs.len() questions#if R.sections.len() > 1 [ in #R.sections.len() parts], #if show-marks [, for a total of #R.total marks].],
   )
   if show-grid and not key {
     instr.push([Record your final MCQ answers in the answer grid below — the grid is what gets graded.])
   }
-  for s in exam.at("instructions", default: ()) { instr.push(s) }
+  let extra = exam.at("instructions", default: ())
+  let show-instr = extra != none
+  if show-instr { for s in extra { instr.push(s) } }
 
   let info = ()
   if "date" in exam { info.push([Date: #exam.date]) }
   if "duration" in exam { info.push([Duration: #exam.duration]) }
-  info.push([Maximum marks: #R.total])
+  if show-marks { info.push([Maximum marks: #R.total]) }
 
   // Default page furniture; both are overridable via exam.header / exam.footer
   // (auto = these defaults, none = off, content = fixed, function = called
@@ -187,7 +214,7 @@
           " — "
           exam.at("title", default: "")
         }),
-        text(size: 9pt, weight: "bold", "SET " + set-id),
+        if show-set { text(size: 9pt, weight: "bold", "SET " + set-id) },
       )
       v(-4pt)
       line(length: 100%, stroke: 0.4pt + gray)
@@ -198,7 +225,7 @@
     let t = counter(page).final().first()
     align(
       center,
-      text(size: 9pt, fill: gray.darken(30%), "Set " + set-id + "  ·  Page " + str(p) + " of " + str(t)),
+      text(size: 9pt, fill: gray.darken(30%), (if show-set { "Set " + set-id + "  ·  " } else { "" }) + "Page " + str(p) + " of " + str(t)),
     )
   }
   let resolve = (v, default) => {
@@ -208,7 +235,7 @@
   }
 
   [
-    #set document(title: plaintext(exam.at("title", default: exam.id)) + " — Set " + set-id + (if key { " (Answer Key)" } else { "" }))
+    #set document(title: plaintext(exam.at("title", default: exam.id)) + (if show-set { " — Set " + set-id } else { "" }) + (if key { " (Answer Key)" } else { "" }))
     #set page(
       paper: "a4",
       margin: (x: 2cm, top: 2.3cm, bottom: 2.3cm),
@@ -227,10 +254,10 @@
       #v(4pt)
       #text(size: 10.5pt, info.join(h(2.2em)))
       #v(6pt)
-      #box(stroke: 1.2pt, inset: (x: 14pt, y: 7pt), radius: 2pt, text(size: 14pt, weight: "bold", "SET " + set-id))
+      #if show-set { box(stroke: 1.2pt, inset: (x: 14pt, y: 7pt), radius: 2pt, text(size: 14pt, weight: "bold", "SET " + set-id)) }
     ]
 
-    #if not key {
+    #if not key and exam.at("name-line", default: true) {
       v(8pt)
       grid(
         columns: (auto, 1fr, auto, 0.45fr),
@@ -241,7 +268,7 @@
       )
     }
 
-    #block(
+    #if show-instr { block(
       width: 100%,
       stroke: 0.6pt + gray.darken(20%),
       inset: 9pt,
@@ -253,7 +280,14 @@
         set text(size: 10pt)
         list(spacing: 0.55em, ..instr)
       },
-    )
+    ) }
+
+    #{
+      let gt = exam.at("grade-table", default: none)
+      assert(gt in (none, "parts", "questions", "mixed"),
+        message: "grade-table must be none, \"parts\", \"questions\" or \"mixed\"")
+      if gt != none and not key { _grade-table(R, gt) }
+    }
 
     #if show-grid {
       block(above: 1em, {
@@ -268,7 +302,7 @@
           grid(
             columns: (1fr, auto),
             text(size: 12.5pt, weight: "bold")[Part #numbering("A", si + 1) — #s.title],
-            text(size: 10pt, style: "italic", fill: gray.darken(40%))[#s.marks marks],
+            if show-marks { text(size: 10pt, style: "italic", fill: gray.darken(40%))[#s.marks marks] },
           )
           if s.instructions != none {
             v(2pt)
@@ -281,7 +315,7 @@
         block(above: 1.2em, below: 0.4em, text(size: 10pt, style: "italic", s.instructions))
       }
       for e in s.questions {
-        block(above: 1.1em, _render-question(e, key))
+        block(above: 1.1em, _render-question(e, key, show-marks: show-marks))
       }
     }
 

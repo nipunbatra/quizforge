@@ -129,6 +129,7 @@
       title: sec.at("title", default: none),
       instructions: sec.at("instructions", default: none),
       marks: sec-marks,
+      shuffle: sec.at("shuffle", default: true),
       questions: qs,
     ))
   }

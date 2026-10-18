@@ -403,9 +403,14 @@
   title: "",
   date: none,
   duration: none,
-  sets: ("A",),
+  sets: none, // none = one unlabelled paper (set "A" internally)
+  show-set: auto, // auto = show "SET X" only when sets are given; true / false to force
   answer-grid: false,
-  instructions: (),
+  grade-table: none, // none | "parts" | "questions" | "mixed": grader's score table on the cover
+  instructions: (), // extra bullets; none = no Instructions box at all
+  answers: true, // false = student paper (like commenting out \printanswers); --input mode=... still overrides
+  show-marks: true, // false = hide all marks (per question, per part, cover)
+  name-line: true, // false = no Name / Roll No. lines
   answer-space: 5cm, // default space for subjective questions without #answer(...); none = no space
   header: auto, // auto = generated | none = off | content | (info) => content
   footer: auto, // ditto; info = (exam, set, mode, total)
@@ -420,8 +425,12 @@
     id: id,
     course: course,
     title: if title == "" { id } else { title },
-    sets: sets,
+    sets: if sets == none { ("A",) } else { sets },
+    "show-set": if show-set == auto { sets != none } else { show-set },
     "answer-grid": answer-grid,
+    "grade-table": grade-table,
+    "show-marks": show-marks,
+    "name-line": name-line,
     instructions: instructions,
     header: header,
     footer: footer,
@@ -432,6 +441,6 @@
     exam: exam,
     questions: parsed.questions,
     sections: parsed.sections,
-    default-mode: "key", // the master IS the key; --input mode=exam for papers
+    default-mode: if answers { "key" } else { "exam" }, // --input mode=... overrides
   )
 }
